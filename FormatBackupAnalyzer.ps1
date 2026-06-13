@@ -1,4 +1,4 @@
-
+﻿
 
 # Windows Presentation Foundation (WPF) ve Windows Forms derlemelerini yükle
 Add-Type -AssemblyName PresentationFramework
@@ -723,6 +723,7 @@ $ScanScript = {
                     Name        = $br.Name
                     Path        = $br.Path
                     Size        = $sizeText
+                    SizeBytes   = $sizeBytes
                     Recommended = $br.Rec
                 }
             }
@@ -769,7 +770,7 @@ foreach ($path in $userPaths) {
 }
 
 # 2. Disk kök dizinlerindeki 1. seviye klasörler (Sistem klasörleri hariç)
-$excludePattern = '^(System Volume Information|\$RECYCLE\.BIN|Windows|Program Files|Program Files \(x86\)|ProgramData|AppData|Microsoft|WindowsPowerShell|Temp|Logs|Recovery|Intel|nvidia|MSOCache)$'
+$excludePattern = '^(System Volume Information|\$RECYCLE\.BIN|Windows|Program Files|Program Files \(x86\)|ProgramData|AppData|Microsoft|WindowsPowerShell|Temp|Logs|Recovery|Intel|nvidia|MSOCache|Users|PerfLogs)$'
 try {
     $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -or $_.DriveType -eq 'Removable' }
     foreach ($drive in $drives) {
@@ -822,6 +823,15 @@ $GlobalData = $SharedData.GlobalData
 $SharedData.StatusText = "Projeler taranıyor..."
 
 function Get-ProjectTypeName-Main($path) {
+    # Güvenlik Kontrolleri: Disk kökleri, kullanıcı profil klasörü, 'Users' veya 'source' gibi genel klasörler proje olamaz.
+    if ($path -match '^[a-zA-Z]:\\?$' -or 
+        $path -eq $env:USERPROFILE -or 
+        (Split-Path $path -Leaf) -eq 'Users' -or 
+        (Split-Path $path -Leaf) -eq 'source' -or
+        $path -eq (Split-Path $env:USERPROFILE -Parent)) {
+        return $null
+    }
+
     $hasGit = Test-Path (Join-Path $path ".git") -EA SilentlyContinue
     $g = if ($hasGit) { " (Git)" } else { "" }
     if (Test-Path (Join-Path $path "Assets\ProjectSettings") -EA SilentlyContinue) { return "Unity Projesi$g" }
@@ -1404,7 +1414,7 @@ $Xaml = @"
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Proje Adı" Binding="{Binding Name}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Tür" Binding="{Binding Type}" Width="*"/>
-                                    <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="*"/>
+                                    <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" SortMemberPath="SizeBytes" Width="*"/>
                                     <DataGridTextColumn Header="Son Değiştirilme" Binding="{Binding LastModified}" Width="1.2*"/>
                                     <DataGridTextColumn Header="Dosya Yolu" Binding="{Binding Path}" Width="3*"/>
                                 </DataGrid.Columns>
@@ -1430,7 +1440,7 @@ $Xaml = @"
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Klasör Türü" Binding="{Binding Name}" Width="1.5*"/>
                                     <DataGridTextColumn Header="Klasör Tipi" Binding="{Binding Type}" Width="*"/>
-                                    <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="*"/>
+                                    <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" SortMemberPath="SizeBytes" Width="*"/>
                                     <DataGridTextColumn Header="Öneri" Binding="{Binding Recommended}" Width="2.5*"/>
                                     <DataGridTextColumn Header="Tam Yol" Binding="{Binding Path}" Width="3.5*"/>
                                 </DataGrid.Columns>
@@ -1460,7 +1470,7 @@ $Xaml = @"
                                 <DataGrid Name="dgBrowsers" Height="180">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="Tarayıcı" Binding="{Binding Name}" Width="1.5*"/>
-                                        <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" Width="*"/>
+                                        <DataGridTextColumn Header="Boyut" Binding="{Binding Size}" SortMemberPath="SizeBytes" Width="*"/>
                                         <DataGridTextColumn Header="Öneri" Binding="{Binding Recommended}" Width="3.5*"/>
                                         <DataGridTextColumn Header="Klasör Konumu" Binding="{Binding Path}" Width="4*"/>
                                     </DataGrid.Columns>
