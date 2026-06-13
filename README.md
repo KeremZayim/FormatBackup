@@ -11,7 +11,7 @@ Bu araç, bilgisayarınıza format atmadan önce neleri yedeklemeniz gerektiğin
 - **Yüklü Uygulamalar:** Kontrol panelinden yüklenmiş masaüstü uygulamalarını listeler.
 - **Windows Mağaza Uygulamaları:** Microsoft Store üzerinden sonradan yüklenmiş uygulamaları (Windows Defender gibi sistem uygulamalarını filtreleyerek) listeler.
 - **Geliştirici Önbellekleri:** Gradle, Maven, NuGet, Conda, VS Code eklentileri, Android SDK vb. geliştirici önbelleklerinin diskte kapladığı alanı hesaplar ve yedekleme önerileri sunar. Çift tıklayarak doğrudan dosya konumunu açabilirsiniz.
-- **Proje Tespiti:** Belirtilen geliştirme dizinlerindeki projeleri tarar ve teknolojilerine göre (Node.js, Visual Studio, C# Project, Maven, Gradle, IntelliJ, Android Studio, Python, Rust, Unity, Flutter vb.) sınıflandırır.
+- **Proje Tespiti:** Bilgisayarınızdaki projeleri otomatik olarak tarar ve teknolojilerine göre (Node.js, Visual Studio, C# Project, Maven, Gradle, IntelliJ, Android Studio, Python, Rust, Unity, Flutter vb.) sınıflandırır.
 - **Yedekleme ve Bulut:** OneDrive ve Google Drive senkronizasyon durumları ile tarayıcı profillerinin (Chrome, Edge, Firefox) boyutlarını analiz eder.
 
 ---
@@ -32,23 +32,17 @@ Uygulamayı hiçbir komut satırı işlemi yapmadan çalıştırmak için **`Run
 
 ---
 
-## ⚙️ Kişiselleştirme (Tarama Dizinlerini Değiştirme)
+## ⚙️ Proje Tarama Mantığı ve Otomatik Arama
 
-Varsayılan olarak uygulama `D:\Yazılım etc`, `C:\Development`, `C:\Dev` ve `C:\Projects` dizinlerini ve bunların alt klasörlerini proje taraması için kullanır. Kendi bilgisayarınızdaki proje yollarını eklemek veya değiştirmek isterseniz:
+Uygulama, kod düzeyinde sabit dizin yolları kullanmak yerine tamamen dinamik ve akıllı bir tarama algoritması kullanır:
 
-1. **`FormatBackupAnalyzer.ps1`** dosyasını bir metin editörüyle açın.
-2. Yaklaşık **750. satıra** gidin.
-3. `$extraRoots.Add('C:\KendiKlasörünüz')` şeklinde istediğiniz dizin yollarını ekleyin ya da mevcut varsayılan yolları kendi klasör yapınıza göre düzenleyin.
-
----
-
-## 🧹 GitHub'a Yüklemeden Önce Silinebilecek Dosyalar
-
-Projeyi GitHub'a yüklemeden önce temiz ve profesyonel bir görünüm elde etmek için aşağıdaki dosyaları elle silebilirsiniz:
-
-- **`cleanup.ps1`**: Kod dosyalarını düzenlemek ve geçici dosyaları silmek için kullanılan yardımcı betiktir. Artık başlatıcılardan (`Run.vbs` ve `Run.bat`) bağımlılığı kaldırılmıştır, bu nedenle güvenle silebilirsiniz.
-- **`test_scan.ps1`**: Proje tarama algoritmalarını test etmek için kullanılan geçici bir test betiğidir. Ana uygulamanın çalışması için gerekli değildir.
-- **`script_error.log`**: Olası hata loglarını tutan boş bir dosyadır, güvenle silinebilir.
+1. **Standart Konumlar:** Kullanıcı profil klasörünüzdeki (`C:\Users\KullaniciAdi`) popüler geliştirme konumlarına otomatik olarak bakar:
+   - `source\repos` (Visual Studio varsayılanı)
+   - `Desktop` (Masaüstü)
+   - `Documents` (Belgelerim)
+   - `Projects`, `IdeaProjects`, `AndroidStudioProjects`, `workspace` vb.
+2. **Tüm Disklerde Otomatik Tarama:** Bilgisayarınıza bağlı olan tüm aktif sabit ve taşınabilir diskleri (C:, D:, E: vb.) tarayarak, bu disklerin kökündeki klasörlerin altında bulunan projeleri otomatik olarak bulur.
+3. **Akıllı Filtreleme:** Sistem dosyaları (`Windows`, `Program Files`, `ProgramData`, `$RECYCLE.BIN` vb.) ile taramayı yavaşlatacak ağır bağımlılık klasörleri (`node_modules`, `.git`, `bin`, `obj`, `venv`, `build` vb.) tarama dışı bırakılarak işlem çok kısa sürede tamamlanır.
 
 ---
 

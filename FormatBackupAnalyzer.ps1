@@ -1,4 +1,4 @@
-﻿
+
 
 # Windows Presentation Foundation (WPF) ve Windows Forms derlemelerini yükle
 Add-Type -AssemblyName PresentationFramework
@@ -746,22 +746,46 @@ $Runspace = [runspacefactory]::CreateRunspace()
 $Runspace.Open()
 $PowerShellCmd = [powershell]::Create()
 $PowerShellCmd.Runspace = $Runspace
-# Kullanıcının özel geliştirme dizinlerini belirle (Türkçe karakter içeren yollar runtime'da oluşturulur)
-$devDriveLetter = 'D'
-$devFolderName = 'Yaz' + [char]0x0131 + 'l' + [char]0x0131 + 'm etc'
-$customDevPath = "${devDriveLetter}:\${devFolderName}"
-# Ana dizini ve tüm 1. kademe alt klasörlerini proje kökü olarak ekle
+# Kullanıcının geliştirme dizinlerini ve tüm disklerin kök klasörlerini dinamik olarak tespit et
 $extraRoots = [System.Collections.Generic.List[string]]::new()
-$extraRoots.Add($customDevPath)
-$extraRoots.Add('C:\Development')
-$extraRoots.Add('C:\Dev')
-$extraRoots.Add('C:\Projects')
-# D:\Yazılım etc'nin alt klasörlerini de ayrıca ekle (Projeler, Discord Bot vb.)
-if (Test-Path $customDevPath -ErrorAction SilentlyContinue) {
-    Get-ChildItem $customDevPath -Directory -ErrorAction SilentlyContinue | ForEach-Object {
-        $extraRoots.Add($_.FullName)
+
+# 1. Standart kullanıcı profil dizinleri
+$userPaths = @(
+    "$env:USERPROFILE\source\repos",
+    "$env:USERPROFILE\Projects",
+    "$env:USERPROFILE\IdeaProjects",
+    "$env:USERPROFILE\AndroidStudioProjects",
+    "$env:USERPROFILE\workspace",
+    "$env:USERPROFILE\Documents\Projects",
+    "$env:USERPROFILE\Desktop",
+    "$env:USERPROFILE\Documents"
+)
+foreach ($path in $userPaths) {
+    if (Test-Path $path -EA SilentlyContinue) {
+        if (-not $extraRoots.Contains($path)) {
+            $extraRoots.Add($path)
+        }
     }
 }
+
+# 2. Disk kök dizinlerindeki 1. seviye klasörler (Sistem klasörleri hariç)
+$excludePattern = '^(System Volume Information|\$RECYCLE\.BIN|Windows|Program Files|Program Files \(x86\)|ProgramData|AppData|Microsoft|WindowsPowerShell|Temp|Logs|Recovery|Intel|nvidia|MSOCache)$'
+try {
+    $drives = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.DriveType -eq 'Fixed' -or $_.DriveType -eq 'Removable' }
+    foreach ($drive in $drives) {
+        if ($drive.IsReady) {
+            $rootPath = $drive.RootDirectory.FullName
+            Get-ChildItem $rootPath -Directory -EA SilentlyContinue | Where-Object {
+                $_.Name -notmatch $excludePattern
+            } | ForEach-Object {
+                if (-not $extraRoots.Contains($_.FullName)) {
+                    $extraRoots.Add($_.FullName)
+                }
+            }
+        }
+    }
+} catch {}
+
 $PowerShellCmd.AddScript($ScanScript).AddArgument($SharedData).AddArgument($env:USERPROFILE).AddArgument($extraRoots.ToArray()) | Out-Null
 
 $AsyncResult = $PowerShellCmd.BeginInvoke()
@@ -856,25 +880,9 @@ function Scan-Projects-Main($root, $depth, $max) {
     }
 }
 
-# Kullanıcı profil dizinleri
-@(
-    "$env:USERPROFILE\source\repos",
-    "$env:USERPROFILE\Projects",
-    "$env:USERPROFILE\IdeaProjects",
-    "$env:USERPROFILE\AndroidStudioProjects",
-    "$env:USERPROFILE\workspace",
-    "$env:USERPROFILE\Documents\Projects"
-) | ForEach-Object { if (Test-Path $_) { Scan-Projects-Main $_ 0 3 } }
-
-# D:\Yazılım etc ve alt klasörleri
-$_devDrv = 'D'
-$_devFld = 'Yaz' + [char]0x0131 + 'l' + [char]0x0131 + 'm etc'
-$_devPath = "${_devDrv}:\${_devFld}"
-if (Test-Path $_devPath -EA SilentlyContinue) {
-    Scan-Projects-Main $_devPath 0 3
-    Get-ChildItem $_devPath -Directory -EA SilentlyContinue | ForEach-Object {
-        Scan-Projects-Main $_.FullName 0 3
-    }
+# Dinamik olarak tespit edilen tüm geliştirme ve kullanıcı klasörlerini tara
+foreach ($target in $extraRoots) {
+    Scan-Projects-Main $target 0 3
 }
 
 $GlobalData.Projects = $projectsFound
